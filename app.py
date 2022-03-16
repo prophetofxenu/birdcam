@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request
 from picamera import PiCamera
 from base64 import b64encode
-import board
-from adafruit_dht import DHT11
+from board import I2C
+from adafruit_ahtx0 import AHTx0
 import subprocess
 import os
 from threading import Lock
@@ -12,9 +12,7 @@ from time import sleep
 app = Flask(__name__)
 camera_lock = Lock()
 
-dht = DHT11(board.D4)
-last_temp = 0
-last_humidity = 0
+aht = AHTx0(I2C())
 
 img_counter = 0
 vid_counter = 0
@@ -45,50 +43,14 @@ def main():
 
 @app.route('/api/environment')
 def environment():
-  global last_temp
-  global last_humidity
-  temp_c = 0
-  humidity = 0
-  current = False
-  for _ in range(1):
-    try:
-      temp_c = dht.temperature
-      humidity = dht.humidity
-      if temp_c == None or humidity == None:
-        sleep(0.2)
-        continue
-      last_temp = temp_c
-      last_humidity = humidity
-      current = True
-      break
-    except RuntimeError:
-      sleep(0.2)
-    except OSError:
-      sleep(0.2)
-  if current:
-    temp_f = temp_c * (9 / 5) + 32
-    return {
-      'ok': True,
-      'current': current,
-      'temp_c': round(temp_c),
-      'temp_f': round(temp_f),
-      'humidity': humidity
-    }
-  elif not current and last_temp != None and last_humidity != None:
-    temp_c = last_temp
-    humidity = last_humidity
-    temp_f = temp_c * (9 / 5) + 32
-    return {
-      'ok': True,
-      'current': current,
-      'temp_c': round(temp_c),
-      'temp_f': round(temp_f),
-      'humidity': humidity
-    }
-  else:
-    return {
-      'ok': False
-    }
+  temp_c = aht.temperature
+  temp_f = temp_c * (9 / 5) + 32
+  humidity = aht.relative_humidity
+  return {
+    'temp_c': round(temp_c),
+    'temp_f': round(temp_f),
+    'humidity': round(humidity)
+  }
 
 @app.route('/api/preview')
 def preview():
@@ -224,22 +186,6 @@ if __name__ == '__main__':
   for video in os.listdir('static/videos'):
     print(f'Removing {video}')
     os.remove(f'static/videos/{video}')
-
-  print('Attempting to get temperature')
-  dht_tries = 0
-  while True:
-    try:
-      last_temp = dht.temperature
-      last_humidity = dht.humidity
-      if last_temp != None and last_humidity != None or dht_tries >= 300:
-        print('Got temperature')
-        break
-      else:
-        dht_tries += 1
-        sleep(0.2)
-    except RuntimeError:
-      dht_tries += 1
-      sleep(0.2)
 
   app.run('0.0.0.0', 8080, debug=False)
 

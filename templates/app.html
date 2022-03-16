@@ -166,7 +166,6 @@ function takePicture() {
   fetch(request)
     .then(response => response.json())
     .then(result => {
-      console.log(result);
       preview_lock = false;
       setStatus(`<a href="${result.path}?r=${Math.floor(Math.random() * 1000)}" target="_blank">Download image</a>`);
     });
@@ -186,7 +185,6 @@ function takeVideo() {
   fetch(request)
     .then(response => response.json())
     .then(result => {
-      console.log(result);
       preview_lock = false;
       setStatus(`<a href="${result.path}?r=${Math.floor(Math.random() * 1000)}" target="_blank">Download video</a>`);
     });
@@ -221,14 +219,10 @@ function refreshEnvironment() {
   fetch(request)
     .then(response => response.json())
     .then(result => {
-      if (result.ok) {
-        let txt = `Temperature: ${result.temp_f}&deg;F `;
-        txt += `(${result.temp_c}&deg;C), `;
-        txt += `Humidity: ${result.humidity}&percnt;`;
-        document.getElementById('environment').innerHTML = txt;
-      } else {
-        document.getElementById('environment').innerText = 'Unable to get temperature and humidity';
-      }
+      let txt = `Temperature: ${result.temp_f}&deg;F `;
+      txt += `(${result.temp_c}&deg;C), `;
+      txt += `Humidity: ${result.humidity}&percnt;`;
+      document.getElementById('environment').innerHTML = txt;
     });
 }
 refreshEnvironment();
