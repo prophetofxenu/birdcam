@@ -1,0 +1,12 @@
+[Unit]
+Description=Birdcam Flask server
+After=multi-user.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/birdcam
+ExecStart=/usr/bin/python app.py
+
+[Install]
+WantedBy=multi-user.target
+

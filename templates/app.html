@@ -1,0 +1,455 @@
+<!doctype html>
+<title>Birdcam</title>
+<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+<script>
+
+let preview_lock = false;
+
+function setStatus(txt) {
+  document.getElementById('status').innerHTML = txt;
+}
+
+function getSelectValue(id) {
+  const select = document.getElementById(id);
+  return select.options[select.selectedIndex].value;
+}
+
+function resolution() {
+  return getSelectValue('resolution-select');
+}
+
+function iso() {
+  return getSelectValue('iso-select');
+}
+
+function awb() {
+  return getSelectValue('awb-select');
+}
+
+function brightness() {
+  return document.getElementById('brightness').value;
+}
+
+function contrast() {
+  return document.getElementById('contrast').value;
+}
+
+function exposureMode() {
+  return getSelectValue('exposure-mode');
+}
+
+function exposureCompensation() {
+  return document.getElementById('exposure-compensation').value;
+}
+
+function imageEffect() {
+  return getSelectValue('image-effect');
+}
+
+function meterMode() {
+  return getSelectValue('meter-mode');
+}
+
+function rotation() {
+  return getSelectValue('rotation');
+}
+
+function saturation() {
+  return document.getElementById('saturation').value;
+}
+
+function sharpness() {
+  return document.getElementById('sharpness').value;
+}
+
+function shutterSpeed() {
+  return document.getElementById('shutter-speed').value;
+}
+
+function videoDuration() {
+  return document.getElementById('video-duration').value;
+}
+
+function framerate() {
+  return getSelectValue('framerate');
+}
+
+function videoStabilization() {
+  return document.getElementById('video-stabilization').checked;
+}
+
+function videoEffect() {
+  return getSelectValue('video-effect');
+}
+
+function checkFramerate() {
+  const res = resolution();
+  const fps = parseInt(framerate());
+  if (res === '2592x1944' && fps > 15) {
+    alert('Invalid framerate for resolution of 2592x1944. Framerate must be 15 FPS.');
+    return false;
+  } else if (res === '1920x1080' && fps > 30) {
+    alert('Invalid framerate for resolution of 1920x1080. Framerate must be 30 FPS or lower.');
+    return false;
+  } else if (res === '1296x972' && fps > 42) {
+    alert('Invalid framerate for resolution of 1296x972. Framerate must be 42 FPS or lower.');
+    return false;
+  } else if (res === '1296x730' && fps > 49) {
+    alert('Invalid framerate for resolution of 1296x730. Framerate must be 49 FPS or lower.');
+    return false;
+  }
+  return true;
+}
+
+function buildPreviewParams() {
+  let url = '';
+  url += `iso=${iso()}`;
+  url += `&awb=${awb()}`;
+  url += `&brightness=${brightness()}`;
+  url += `&contrast=${contrast()}`;
+  url += `&exposuremode=${exposureMode()}`;
+  url += `&exposurecompensation=${exposureCompensation()}`;
+  url += `&imageeffect=${imageEffect()}`;
+  url += `&metermode=${meterMode()}`;
+  url += `&rotation=${rotation()}`;
+  url += `&saturation=${saturation()}`;
+  url += `&sharpness=${sharpness()}`;
+  url += `&shutterspeed=${shutterSpeed()}`;
+  url += `&videostabilization=${videoStabilization()}`;
+  return url;
+}
+
+function buildPicParams() {
+  let url = '';
+  url += `resolution=${resolution()}`;
+  url += `&iso=${iso()}`;
+  url += `&awb=${awb()}`;
+  url += `&brightness=${brightness()}`;
+  url += `&contrast=${contrast()}`;
+  url += `&exposuremode=${exposureMode()}`;
+  url += `&exposurecompensation=${exposureCompensation()}`;
+  url += `&imageeffect=${imageEffect()}`;
+  url += `&metermode=${meterMode()}`;
+  url += `&rotation=${rotation()}`;
+  url += `&saturation=${saturation()}`;
+  url += `&sharpness=${sharpness()}`;
+  url += `&shutterspeed=${shutterSpeed()}`;
+  url += `&videostabilization=${videoStabilization()}`;
+  return url;
+}
+
+function buildVidParams() {
+  let url = '';
+  url += `resolution=${resolution()}`;
+  url += `&iso=${iso()}`;
+  url += `&awb=${awb()}`;
+  url += `&brightness=${brightness()}`;
+  url += `&contrast=${contrast()}`;
+  url += `&exposuremode=${exposureMode()}`;
+  url += `&exposurecompensation=${exposureCompensation()}`;
+  url += `&metermode=${meterMode()}`;
+  url += `&rotation=${rotation()}`;
+  url += `&saturation=${saturation()}`;
+  url += `&sharpness=${sharpness()}`;
+  url += `&shutterspeed=${shutterSpeed()}`;
+  url += `&videostabilization=${videoStabilization()}`;
+  url += `&duration=${videoDuration()}`;
+  url += `&framerate=${framerate()}`;
+  url += `&videoeffect=${videoEffect()}`;
+  return url;
+}
+
+function takePicture() {
+  const url = '/api/takepicture?' + buildPicParams();
+  const request = new Request(url);
+  preview_lock = true;
+  fetch(request)
+    .then(response => response.json())
+    .then(result => {
+      console.log(result);
+      preview_lock = false;
+      setStatus(`<a href="${result.path}?r=${Math.floor(Math.random() * 1000)}" target="_blank">Download image</a>`);
+    });
+  setStatus('Preview disabled while taking picture...');
+}
+
+function takeVideo() {
+  if (resolution() === '2592x1944') {
+    alert('Resolution too high for video. Must be 1920x1080 or less.');
+    return;
+  }
+  if (!checkFramerate()) return;
+
+  const url = '/api/takevideo?' + buildVidParams();
+  const request = new Request(url);
+  preview_lock = true;
+  fetch(request)
+    .then(response => response.json())
+    .then(result => {
+      console.log(result);
+      preview_lock = false;
+      setStatus(`<a href="${result.path}?r=${Math.floor(Math.random() * 1000)}" target="_blank">Download video</a>`);
+    });
+  setStatus('Preview disabled while recording video...');
+}
+
+let initial_load = true;
+function refreshPreview() {
+  if (preview_lock) {
+    return;
+  }
+  preview_lock = true;
+  const url = '/api/preview?' + buildPreviewParams();
+  const request = new Request(url);
+  const image = document.getElementById('preview-img');
+  fetch(request)
+    .then(response => response.json())
+    .then((result) => {
+      const data = atob(result.data);
+      image.setAttribute('src', `data:image/jpeg;base64,${result.data}`);
+      preview_lock = false;
+      if (initial_load) {
+        initial_load = false;
+        setStatus('');
+      }
+    });
+}
+setInterval(refreshPreview, 1000);
+
+function refreshEnvironment() {
+  const request = new Request('/api/environment');
+  fetch(request)
+    .then(response => response.json())
+    .then(result => {
+      if (result.ok) {
+        let txt = `Temperature: ${result.temp_f}&deg;F `;
+        txt += `(${result.temp_c}&deg;C), `;
+        txt += `Humidity: ${result.humidity}&percnt;`;
+        document.getElementById('environment').innerHTML = txt;
+      } else {
+        document.getElementById('environment').innerText = 'Unable to get temperature and humidity';
+      }
+    });
+}
+refreshEnvironment();
+setInterval(refreshEnvironment, 10000);
+
+</script>
+<style>
+
+body {
+  color: white;
+  background-color: #303030;
+  font-family: "Arial", sans-serif;
+}
+
+#environment {
+  text-align: center;
+}
+
+.main {
+  margin: 1em;
+  display: flex;
+  justify-content: center;
+}
+
+.preview-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center; 
+  align-items: center;
+}
+
+.preview-frame {
+  height: 480px;
+  width: 720px;
+  border: 1px solid gray;
+}
+
+.buttons {
+  margin: 1em;
+}
+
+.controller {
+  margin: 1em;
+}
+
+.option-container > label {
+  display: inline-block;
+  width: 12em;
+}
+
+.option-container > select, .option-container > input[type="number"] {
+  box-sizing: border-box;
+  width: 12em;
+}
+
+</style>
+
+<h3 id="environment">Loading temperature and humidity...</h3>
+<div class="main">
+  <div class="preview-container">
+    <h3 id="status">Loading preview...</h3>
+    <div class="preview-frame">
+      <img id="preview-img"/>
+    </div>
+    <div class="buttons">
+      <button id="take-picture" onclick="takePicture()">Take Picture</button> 
+      <button id="take-video" onclick="takeVideo()">Take Video</button>
+    </div>
+  </div>
+  <div class="controller">
+    <h3>Global options</h3>
+    <div class="tab" id="pictures">
+      <div class="option-container">
+        <label for="resolution">Resolution</label>
+        <select name="resolution" id="resolution-select" selected="2592x1944">
+          <option value="640x480">640x480</option>
+          <option value="1296x730">1296x730</option>
+          <option value="1296x972">1296x972</option>
+          <option value="1920x1080">1920x1080</option>
+          <option value="2592x1944">2592x1944</option>
+        </select>
+      </div>
+      <div class="option-container">
+        <label for="iso">ISO</label>
+        <select name="iso" id="iso-select" selected="0">
+          <option value="0">Auto</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+          <option value="320">320</option>
+          <option value="400">400</option>
+          <option value="500">500</option>
+          <option value="640">640</option>
+          <option value="800">800</option>
+        </select>
+      </div>
+      <div class="option-container">
+        <label for="awb">Auto White Balance</label>
+        <select name="awb" id="awb-select" selected="auto">
+          <option value="auto">Auto</option>
+          <option value="sunlight">Sunlight</option>
+          <option value="cloudy">Cloudy</option>
+          <option value="shade">Shade</option>
+        </select>
+      </div>
+      <div class="option-container">
+        <label for="brightness">Brightness</label>
+        <input type="number" name="brightness" id="brightness" min="0" max="100" value="50">
+      </div>
+      <div class="option-container">
+        <label for="contrast">Contrast</label>
+        <input type="number" name="contrast" id="contrast" min="-100" max="100" value="0">
+      </div>
+      <div class="option-container">
+        <label for="exposure-mode">Exposure Mode</label>
+        <select name="exposure-mode" id="exposure-mode" selected="auto">
+          <option value="auto">Auto</option>
+          <option value="night">Night</option>
+          <option value="nightpreview">Night Preview</option>
+          <option value="backlight">Backlight</option>
+          <option value="spotlight">Spotlight</option>
+          <option value="sports">Sports</option>
+          <option value="snow">Snow</option>
+          <option value="beach">Beach</option>
+          <option value="verylong">Very Long</option>
+          <option value="fixedfps">Fixed FPS</option>
+          <option value="antishake">Antishake</option>
+          <option value="fireworks">Fireworks</option> 
+          <option value="off">Off</option>
+        </select>
+      </div>
+      <div class="option-container">
+        <label for="exposure-compensation">Exposure Compensation</label>
+        <input type="number" name="exposure-compensation" id="exposure-compensation" min="-25" max="25" value="0">
+      </div>
+      <div class="option-container">
+        <label for="meter-mode">Meter Mode</label>
+        <select name="meter-mode" id="meter-mode" selected="average">
+          <option value="average">Average</option>
+          <option value="spot">Center</option>
+          <option value="backlit">Ignore Edges</option>
+          <option value="matrix">Matrix</option>
+        </select>
+      </div>
+      <div class="option-container">
+        <label for="rotation">Rotation</label>
+        <select name="rotation" id="rotation" selected="0">
+          <option value="0">0</option>
+          <option value="90">90</option>
+          <option value="180">180</option>
+          <option value="270">270</option>
+        </select>
+      </div>
+      <div class="option-container">
+        <label for="saturation">Saturation</label>
+        <input type="number" name="saturation" id="saturation" min="-100" max="100" value="0">
+      </div>
+      <div class="option-container">
+        <label for="sharpness">Sharpness</label>
+        <input type="number" name="sharpness" id="sharpness" min="-100" max="100" value="0">
+      </div>
+      <div class="option-container">
+        <label for="shutter-speed">Shutter Speed (0 for auto)</label>
+        <input type="number" name="shutter-speed" id="shutter-speed" min="0" max="1000" value="0">
+      </div>
+      <h3>Picture options</h3>
+      <div class="option-container">
+        <label for="image-effect">Image Effect</label>
+        <select name="image-effect" id="image-effect" selected="none">
+          <option value="none">None</option>
+          <option value="negative">Negative</option>
+          <option value="solarize">Solarize</option>
+          <option value="sketch">Sketch</option>
+          <option value="denoise">Denoise</option>
+          <option value="emboss">Emboss</option>
+          <option value="oilpaint">Oil Painting</option>
+          <option value="hatch">Hatch</option>
+          <option value="gpen">G Pen</option>
+          <option value="pastel">Pastel</option>
+          <option value="watercolor">Watercolor</option>
+          <option value="film">Film</option>
+          <option value="blur">Blur</option>
+          <option value="saturation">Saturation</option>
+          <option value="colorswap">Colorswap</option>
+          <option value="washedout">Washed Out</option>
+          <option value="posterise">Posterize</option>
+          <option value="colorpoint">Colorpoint</option>
+          <option value="colorbalance">Color Balance</option>
+          <option value="cartoon">Cartoon</option>
+          <option value="deinterlace1">Deinterlace 1</option>
+          <option value="deinterlace2">Deinterlace 2</option>
+        </select>
+      </div>
+      <h3>Video options</h3>
+      <div class="option-container">
+        <label for="video-duration">Video Duration (sec)</label>
+        <input type="number" name="video-duration" id="video-duration" min="5" max="300" value="15">
+      </div>
+      <div class="option-container">
+        <label for="framerate">Framerate</label>
+        <select name="framerate" id="framerate">
+          <option value="15">15 FPS</option>
+          <option value="30">30 FPS</option>
+          <option value="42">42 FPS</option>
+          <option value="49">49 FPS</option>
+          <option value="60">60 FPS</option>
+          <option value="90">90 FPS</option>
+        </select>
+      </div>
+      <div class="option-container">
+        <label for="video-stabilization">Video Stabilization</label>
+        <input type="checkbox" name="video-stabilization" id="video-stabilization"> 
+      </div>
+      <div class="option-container">
+        <label for="video-effect">Image Effect</label>
+        <select name="video-effect" id="video-effect" selected="none">
+          <option value="none">None</option>
+          <option value="negative">Negative</option>
+          <option value="solarize">Solarize</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
